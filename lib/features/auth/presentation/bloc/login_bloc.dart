@@ -293,6 +293,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
         await _sessionCubit.authenticate(
           tokens,
           identity: result.identity ?? state.identity,
+          notice: 'Xác thực Smart đã thành công.',
         );
         emit(
           state.copyWith(

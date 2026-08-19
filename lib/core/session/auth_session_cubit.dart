@@ -21,6 +21,7 @@ class AuthSessionState extends Equatable {
     this.identity,
     this.userId,
     this.preferLogin = false,
+    this.notice,
   });
 
   const AuthSessionState.unknown() : this(status: AuthSessionStatus.unknown);
@@ -30,13 +31,15 @@ class AuthSessionState extends Equatable {
     : this(status: AuthSessionStatus.pendingRegistration, userId: userId);
   factory AuthSessionState.authenticated(
     TokenPair tokens,
-    AuthIdentity? identity,
-  ) {
+    AuthIdentity? identity, {
+    String? notice,
+  }) {
     return AuthSessionState(
       status: AuthSessionStatus.authenticated,
       tokens: tokens,
       identity: identity,
       userId: identity?.userId,
+      notice: notice,
     );
   }
 
@@ -45,9 +48,17 @@ class AuthSessionState extends Equatable {
   final AuthIdentity? identity;
   final String? userId;
   final bool preferLogin;
+  final String? notice;
 
   @override
-  List<Object?> get props => [status, tokens, identity, userId, preferLogin];
+  List<Object?> get props => [
+    status,
+    tokens,
+    identity,
+    userId,
+    preferLogin,
+    notice,
+  ];
 }
 
 class AuthSessionCubit extends Cubit<AuthSessionState> {
@@ -71,7 +82,11 @@ class AuthSessionCubit extends Cubit<AuthSessionState> {
     );
   }
 
-  Future<void> authenticate(TokenPair tokens, {AuthIdentity? identity}) async {
+  Future<void> authenticate(
+    TokenPair tokens, {
+    AuthIdentity? identity,
+    String? notice,
+  }) async {
     await _tokenStore.save(tokens);
     if (identity != null) {
       await _identityStore.save(identity);
@@ -81,6 +96,7 @@ class AuthSessionCubit extends Cubit<AuthSessionState> {
       AuthSessionState.authenticated(
         tokens,
         identity ?? await _identityStore.read(),
+        notice: notice,
       ),
     );
   }

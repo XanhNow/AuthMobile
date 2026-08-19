@@ -223,7 +223,7 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
           identity: identity,
           message: tokens == null
               ? 'Registration ${result.registrationStatus}. Please log in.'
-              : 'Registration ${result.registrationStatus}.',
+              : 'Passkey đã hoàn tất. Chọn Xác Thực Smart hoặc Bỏ qua.',
         ),
       );
     } catch (error) {
@@ -379,6 +379,7 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
         await _sessionCubit.authenticate(
           tokens,
           identity: result.identity ?? state.identity,
+          notice: 'Xác thực Smart đã thành công.',
         );
         return;
       }

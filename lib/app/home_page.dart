@@ -27,6 +27,20 @@ class _HomePageState extends State<HomePage> {
   Timer? _smartOtpTimer;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final notice = context.read<AuthSessionCubit>().state.notice;
+      if (notice != null && notice.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(_homeSnackBar(notice));
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _smartOtpTimer?.cancel();
     _smartOtpCodeController.dispose();

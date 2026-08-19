@@ -172,6 +172,13 @@ class _RegisterViewState extends State<_RegisterView> {
   Widget build(BuildContext context) {
     return BlocConsumer<RegistrationBloc, RegistrationState>(
       listener: (context, state) {
+        if (state.step == RegistrationStep.enrollingSmartOtp ||
+            state.step == RegistrationStep.smartOtpVerificationRequired ||
+            state.step == RegistrationStep.revealingSmartOtp ||
+            state.step == RegistrationStep.verifyingSmartOtp) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        }
+
         if (state.step == RegistrationStep.completed &&
             context.read<AuthSessionCubit>().state.status ==
                 AuthSessionStatus.authenticated) {
