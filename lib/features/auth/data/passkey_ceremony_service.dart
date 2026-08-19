@@ -59,10 +59,20 @@ class PasskeyCeremonyService {
 
   JsonMap _publicKey(JsonMap options) {
     final nested = options['publicKey'];
-    if (nested is JsonMap) {
-      return nested;
+    final publicKey = Map<String, dynamic>.from(
+      nested is JsonMap ? nested : options,
+    );
+    if (publicKey['allowCredentials'] == null) {
+      publicKey['allowCredentials'] = <dynamic>[];
     }
-    return options;
+    final authenticatorSelection = publicKey['authenticatorSelection'];
+    if (authenticatorSelection is JsonMap &&
+        authenticatorSelection['authenticatorAttachment'] == null) {
+      publicKey['authenticatorSelection'] = Map<String, dynamic>.from(
+        authenticatorSelection,
+      )..remove('authenticatorAttachment');
+    }
+    return publicKey;
   }
 
   AppException _mapPasskeyError(Object error) {

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../core/session/auth_session_cubit.dart';
 import '../features/auth/domain/auth_repository.dart';
+import '../features/auth/presentation/pages/auth_shell_page.dart';
 
 const _homeTextColor = Color(0xFF0B2F4A);
 
@@ -50,6 +51,12 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() => _isLoggingOut = false);
         messenger.showSnackBar(_homeSnackBar(message));
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute<void>(
+            builder: (_) => const AuthShellPage(initialIndex: 1),
+          ),
+          (_) => false,
+        );
       }
     }
   }
