@@ -67,18 +67,47 @@ class TokenPair {
   };
 }
 
+class AuthIdentity {
+  const AuthIdentity({
+    required this.userId,
+    this.phoneNumber,
+    this.maskedPhoneNumber,
+  });
+
+  final String userId;
+  final String? phoneNumber;
+  final String? maskedPhoneNumber;
+
+  factory AuthIdentity.fromJson(Object? json) {
+    final map = json as JsonMap;
+    return AuthIdentity(
+      userId: map['userId'] as String,
+      phoneNumber: map['phoneNumber'] as String?,
+      maskedPhoneNumber: map['maskedPhoneNumber'] as String?,
+    );
+  }
+
+  JsonMap toJson() => {
+    'userId': userId,
+    if (phoneNumber != null) 'phoneNumber': phoneNumber,
+    if (maskedPhoneNumber != null) 'maskedPhoneNumber': maskedPhoneNumber,
+  };
+}
+
 class RegisterResponse {
   const RegisterResponse({
     required this.userId,
     required this.status,
     required this.registrationStatus,
     required this.registeredAtUtc,
+    this.identity,
   });
 
   final String userId;
   final String status;
   final String registrationStatus;
   final DateTime registeredAtUtc;
+  final AuthIdentity? identity;
 
   factory RegisterResponse.fromJson(Object? json) {
     final map = json as JsonMap;
@@ -87,6 +116,9 @@ class RegisterResponse {
       status: map['status'] as String,
       registrationStatus: map['registrationStatus'] as String,
       registeredAtUtc: DateTime.parse(map['registeredAtUtc'] as String),
+      identity: map['identity'] == null
+          ? null
+          : AuthIdentity.fromJson(map['identity']),
     );
   }
 }
@@ -98,6 +130,7 @@ class PasswordLoginResponse {
     this.tokens,
     this.mfa,
     this.reasonCode,
+    this.identity,
   });
 
   final String state;
@@ -105,6 +138,7 @@ class PasswordLoginResponse {
   final TokenPair? tokens;
   final MfaChallengeResponse? mfa;
   final String? reasonCode;
+  final AuthIdentity? identity;
 
   bool get isCompleted => state == 'Completed' && tokens != null;
   bool get isPasskeyRequired => state == 'PasskeyRequired';
@@ -120,6 +154,9 @@ class PasswordLoginResponse {
           ? null
           : MfaChallengeResponse.fromJson(map['mfa']),
       reasonCode: map['reasonCode'] as String?,
+      identity: map['identity'] == null
+          ? null
+          : AuthIdentity.fromJson(map['identity']),
     );
   }
 }
@@ -218,6 +255,7 @@ class PasskeyLoginFinishResponse {
     this.tokens,
     this.mfa,
     this.reasonCode,
+    this.identity,
   });
 
   final String state;
@@ -225,6 +263,7 @@ class PasskeyLoginFinishResponse {
   final TokenPair? tokens;
   final MfaChallengeResponse? mfa;
   final String? reasonCode;
+  final AuthIdentity? identity;
 
   bool get isCompleted => state == 'Completed' && tokens != null;
   bool get isMfaRequired => state == 'MfaRequired';
@@ -239,6 +278,9 @@ class PasskeyLoginFinishResponse {
           ? null
           : MfaChallengeResponse.fromJson(map['mfa']),
       reasonCode: map['reasonCode'] as String?,
+      identity: map['identity'] == null
+          ? null
+          : AuthIdentity.fromJson(map['identity']),
     );
   }
 }

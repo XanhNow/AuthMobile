@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/device/device_context_service.dart';
 import '../../../core/errors/app_exception.dart';
+import '../../../core/storage/auth_identity_store.dart';
 import '../../../core/storage/secure_token_store.dart';
 import '../../../core/validation/phone_number_normalizer.dart';
 import '../data/models/security_models.dart';
@@ -19,6 +20,7 @@ class AuthRepository {
     required SmartOtpDeviceCryptoService smartOtpCrypto,
     required DeviceContextService deviceContext,
     required SecureTokenStore tokenStore,
+    required AuthIdentityStore identityStore,
     FlutterSecureStorage secureStorage = const FlutterSecureStorage(),
     Uuid uuid = const Uuid(),
   }) : _api = api,
@@ -26,6 +28,7 @@ class AuthRepository {
        _smartOtpCrypto = smartOtpCrypto,
        _deviceContext = deviceContext,
        _tokenStore = tokenStore,
+       _identityStore = identityStore,
        _secureStorage = secureStorage,
        _uuid = uuid;
 
@@ -34,6 +37,7 @@ class AuthRepository {
   final SmartOtpDeviceCryptoService _smartOtpCrypto;
   final DeviceContextService _deviceContext;
   final SecureTokenStore _tokenStore;
+  final AuthIdentityStore _identityStore;
   final FlutterSecureStorage _secureStorage;
   final Uuid _uuid;
 
@@ -110,6 +114,7 @@ class AuthRepository {
     final tokens = result.tokens;
     if (result.isCompleted && tokens != null) {
       await _tokenStore.save(tokens);
+      await _saveIdentityIfPresent(result.identity);
     }
     return result;
   }
@@ -135,6 +140,7 @@ class AuthRepository {
     final tokens = result.tokens;
     if (result.state == 'Completed' && tokens != null) {
       await _tokenStore.save(tokens);
+      await _saveIdentityIfPresent(result.identity);
     }
     return result;
   }
@@ -245,6 +251,7 @@ class AuthRepository {
     final tokens = result.tokens;
     if (result.isCompleted && tokens != null) {
       await _tokenStore.save(tokens);
+      await _saveIdentityIfPresent(result.identity);
     }
     return result;
   }
@@ -365,7 +372,14 @@ class AuthRepository {
       includeCurrentSession: true,
     );
     await _tokenStore.clear();
+    await _identityStore.clear();
     return result;
+  }
+
+  Future<void> _saveIdentityIfPresent(AuthIdentity? identity) async {
+    if (identity != null) {
+      await _identityStore.save(identity);
+    }
   }
 }
 

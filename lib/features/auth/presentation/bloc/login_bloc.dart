@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/session/auth_session_cubit.dart';
+import '../../data/models/security_models.dart';
 import '../../domain/auth_repository.dart';
 
 enum LoginStep {
@@ -20,6 +21,7 @@ class LoginState extends Equatable {
   const LoginState({
     required this.step,
     this.userId,
+    this.identity,
     this.message,
     this.smartOtpChallenge,
   });
@@ -28,12 +30,14 @@ class LoginState extends Equatable {
 
   final LoginStep step;
   final String? userId;
+  final AuthIdentity? identity;
   final String? message;
   final SmartOtpCodeChallenge? smartOtpChallenge;
 
   LoginState copyWith({
     LoginStep? step,
     String? userId,
+    AuthIdentity? identity,
     String? message,
     SmartOtpCodeChallenge? smartOtpChallenge,
     bool clearSmartOtpChallenge = false,
@@ -41,6 +45,7 @@ class LoginState extends Equatable {
     return LoginState(
       step: step ?? this.step,
       userId: userId ?? this.userId,
+      identity: identity ?? this.identity,
       message: message,
       smartOtpChallenge: clearSmartOtpChallenge
           ? null
@@ -49,7 +54,13 @@ class LoginState extends Equatable {
   }
 
   @override
-  List<Object?> get props => [step, userId, message, smartOtpChallenge];
+  List<Object?> get props => [
+    step,
+    userId,
+    identity,
+    message,
+    smartOtpChallenge,
+  ];
 }
 
 sealed class LoginEvent extends Equatable {
@@ -135,6 +146,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
           state.copyWith(
             step: LoginStep.passkeyRequired,
             userId: result.userId,
+            identity: result.identity,
             message: result.reasonCode ?? 'Passkey registration is required.',
           ),
         );
@@ -145,6 +157,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
           state.copyWith(
             step: LoginStep.smartOtpRequired,
             userId: result.userId,
+            identity: result.identity,
             message: 'Vui lòng xác thực Smart OTP để hoàn tất đăng nhập.',
             clearSmartOtpChallenge: true,
           ),
@@ -153,7 +166,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       }
       final tokens = result.tokens;
       if (result.isCompleted && tokens != null) {
-        await _sessionCubit.authenticate(tokens);
+        await _sessionCubit.authenticate(tokens, identity: result.identity);
         emit(
           state.copyWith(step: LoginStep.authenticated, userId: result.userId),
         );
@@ -184,6 +197,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
           state.copyWith(
             step: LoginStep.smartOtpRequired,
             userId: result.userId,
+            identity: result.identity,
             message: 'Vui lòng xác thực Smart OTP để hoàn tất đăng nhập.',
             clearSmartOtpChallenge: true,
           ),
@@ -192,7 +206,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       }
       final tokens = result.tokens;
       if (result.isCompleted && tokens != null) {
-        await _sessionCubit.authenticate(tokens);
+        await _sessionCubit.authenticate(tokens, identity: result.identity);
         emit(
           state.copyWith(step: LoginStep.authenticated, userId: result.userId),
         );
@@ -234,6 +248,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
         state.copyWith(
           step: LoginStep.smartOtpRequired,
           userId: userId,
+          identity: state.identity,
           smartOtpChallenge: challenge,
           message: 'Mã Smart OTP đã được tạo. Nhập mã để hoàn tất đăng nhập.',
         ),
@@ -275,7 +290,10 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
       );
       final tokens = result.tokens;
       if (result.isCompleted && tokens != null) {
-        await _sessionCubit.authenticate(tokens);
+        await _sessionCubit.authenticate(
+          tokens,
+          identity: result.identity ?? state.identity,
+        );
         emit(
           state.copyWith(
             step: LoginStep.authenticated,

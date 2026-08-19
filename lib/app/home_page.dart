@@ -212,6 +212,10 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final session = context.watch<AuthSessionCubit>().state;
     final sessionId = session.tokens?.sessionId;
+    final identity = session.identity;
+    final userId = identity?.userId ?? session.userId;
+    final phoneNumber =
+        identity?.maskedPhoneNumber ?? identity?.phoneNumber ?? 'Chưa có';
 
     return DefaultTextStyle.merge(
       style: const TextStyle(color: _homeTextColor),
@@ -263,6 +267,18 @@ class _HomePageState extends State<HomePage> {
                 value: sessionId == null || sessionId.isEmpty
                     ? 'Đang hoạt động'
                     : sessionId,
+              ),
+              const SizedBox(height: 12),
+              _HomeInfoTile(
+                icon: Icons.badge_outlined,
+                title: 'User ID',
+                value: userId == null || userId.isEmpty ? 'Chưa có' : userId,
+              ),
+              const SizedBox(height: 12),
+              _HomeInfoTile(
+                icon: Icons.phone_android_outlined,
+                title: 'Số điện thoại',
+                value: phoneNumber,
               ),
               const SizedBox(height: 12),
               const _HomeInfoTile(

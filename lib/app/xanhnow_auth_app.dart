@@ -5,6 +5,7 @@ import '../core/config/app_config.dart';
 import '../core/device/device_context_service.dart';
 import '../core/network/api_client.dart';
 import '../core/session/auth_session_cubit.dart';
+import '../core/storage/auth_identity_store.dart';
 import '../core/storage/secure_token_store.dart';
 import '../features/auth/data/passkey_ceremony_service.dart';
 import '../features/auth/data/security_auth_api.dart';
@@ -26,6 +27,7 @@ class XanhNowAuthApp extends StatelessWidget {
       providers: [
         RepositoryProvider.value(value: config),
         RepositoryProvider(create: (_) => const SecureTokenStore()),
+        RepositoryProvider(create: (_) => const AuthIdentityStore()),
         RepositoryProvider(create: (_) => DeviceContextService()),
         RepositoryProvider(
           create: (context) => ApiClient(
@@ -45,15 +47,17 @@ class XanhNowAuthApp extends StatelessWidget {
             smartOtpCrypto: context.read<SmartOtpDeviceCryptoService>(),
             deviceContext: context.read<DeviceContextService>(),
             tokenStore: context.read<SecureTokenStore>(),
+            identityStore: context.read<AuthIdentityStore>(),
           ),
         ),
       ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider(
-            create: (context) =>
-                AuthSessionCubit(tokenStore: context.read<SecureTokenStore>())
-                  ..restore(),
+            create: (context) => AuthSessionCubit(
+              tokenStore: context.read<SecureTokenStore>(),
+              identityStore: context.read<AuthIdentityStore>(),
+            )..restore(),
           ),
           BlocProvider(
             create: (context) => RegistrationBloc(
