@@ -707,6 +707,8 @@ class _LoginViewState extends State<_LoginView> {
             state.step == LoginStep.smartOtpRequired ||
             state.step == LoginStep.revealingSmartOtp ||
             state.step == LoginStep.verifyingSmartOtp;
+        final loginChallenge = state.smartOtpChallenge;
+        final loginOtp = loginChallenge?.reveal.otpCode;
         final canSubmitPassword = !busy && _canSubmitPasswordLogin;
         if (smartOtpLogin) {
           return _PagePadding(
@@ -718,15 +720,26 @@ class _LoginViewState extends State<_LoginView> {
                 if (state.userId != null)
                   _StateChip(label: widget.text.userId, value: state.userId!),
                 const SizedBox(height: 12),
-                if (state.smartOtpChallenge != null)
+                if (loginOtp != null && loginOtp.isNotEmpty) ...[
+                  Text(
+                    loginOtp,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: _smartOtpCode,
                     keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
                       labelText: widget.text.smartOtpCode,
                       helperText: widget.text.smartOtpCodeHint,
+                      prefixIcon: const Icon(Icons.password_outlined),
                     ),
                   ),
+                ],
                 const SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: busy
@@ -748,7 +761,7 @@ class _LoginViewState extends State<_LoginView> {
                 FilledButton.tonalIcon(
                   onPressed:
                       busy ||
-                          state.smartOtpChallenge == null ||
+                          loginChallenge == null ||
                           _smartOtpCode.text.trim().isEmpty
                       ? null
                       : () => context.read<LoginBloc>().add(
