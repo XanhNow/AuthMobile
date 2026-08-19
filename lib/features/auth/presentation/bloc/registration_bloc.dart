@@ -403,10 +403,20 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
       );
       final tokens = result.tokens;
       if (result.isCompleted && tokens != null) {
+        final identity = result.identity ?? state.identity;
         await _sessionCubit.authenticate(
           tokens,
-          identity: result.identity ?? state.identity,
+          identity: identity,
           notice: 'Xác thực Smart đã thành công.',
+        );
+        emit(
+          state.copyWith(
+            step: RegistrationStep.completed,
+            tokens: tokens,
+            identity: identity,
+            clearSmartOtpChallenge: true,
+            message: 'Xác thực Smart đã thành công.',
+          ),
         );
         return;
       }
