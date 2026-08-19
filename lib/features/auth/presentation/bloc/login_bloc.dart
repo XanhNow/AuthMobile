@@ -296,6 +296,7 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
         userId: userId,
         challenge: challenge.challenge,
         otp: event.otp,
+        fallbackIdentity: state.identity,
       );
       final tokens = result.tokens;
       if (result.isCompleted && tokens != null) {

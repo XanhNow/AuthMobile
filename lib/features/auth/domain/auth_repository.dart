@@ -246,6 +246,7 @@ class AuthRepository {
     required String userId,
     required StepUpChallengeResponse challenge,
     required String otp,
+    AuthIdentity? fallbackIdentity,
   }) async {
     final result = await _api.completeSmartOtpLogin(
       userId: userId,
@@ -257,7 +258,7 @@ class AuthRepository {
       otp: otp,
       deviceContext: await _deviceContext.current(),
     );
-    return _withStoredPhoneIdentity(result);
+    return _withStoredPhoneIdentity(result, fallbackIdentity: fallbackIdentity);
   }
 
   Future<SmartOtpCodeChallenge> revealSmartOtpCode() async {
@@ -385,19 +386,25 @@ class AuthRepository {
     String userId,
     AuthIdentity? identity,
     String? storedPhone,
+    AuthIdentity? fallbackIdentity,
   ) {
-    final phoneNumber = identity?.phoneNumber ?? storedPhone;
+    final phoneNumber =
+        identity?.phoneNumber ?? storedPhone ?? fallbackIdentity?.phoneNumber;
+    final maskedPhoneNumber =
+        identity?.maskedPhoneNumber ??
+        _maskPhoneNumber(phoneNumber) ??
+        fallbackIdentity?.maskedPhoneNumber;
     return AuthIdentity(
-      userId: identity?.userId ?? userId,
+      userId: identity?.userId ?? fallbackIdentity?.userId ?? userId,
       phoneNumber: phoneNumber,
-      maskedPhoneNumber:
-          identity?.maskedPhoneNumber ?? _maskPhoneNumber(phoneNumber),
+      maskedPhoneNumber: maskedPhoneNumber,
     );
   }
 
   Future<PasswordLoginResponse> _withStoredPhoneIdentity(
-    PasswordLoginResponse response,
-  ) async {
+    PasswordLoginResponse response, {
+    AuthIdentity? fallbackIdentity,
+  }) async {
     final storedPhone = await _storedRegisteredPhone();
     return PasswordLoginResponse(
       state: response.state,
@@ -409,6 +416,7 @@ class AuthRepository {
         response.userId,
         response.identity,
         storedPhone,
+        fallbackIdentity,
       ),
     );
   }
@@ -427,6 +435,7 @@ class AuthRepository {
         response.userId,
         response.identity,
         storedPhone,
+        null,
       ),
     );
   }

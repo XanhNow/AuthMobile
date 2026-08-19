@@ -38,24 +38,18 @@ class _HomePageState extends State<HomePage> {
 
     setState(() => _isLoggingOut = true);
     final messenger = ScaffoldMessenger.of(context);
+    final sessionCubit = context.read<AuthSessionCubit>();
+    var message = 'Đăng xuất thành công.';
 
     try {
       await context.read<AuthRepository>().logoutAll();
-      if (!mounted) {
-        return;
-      }
-
-      await context.read<AuthSessionCubit>().clear();
-      messenger.showSnackBar(_homeSnackBar('Đăng xuất thành công.'));
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-
-      messenger.showSnackBar(_homeSnackBar('Đăng xuất thất bại: $error'));
+      message = 'Đã đăng xuất khỏi thiết bị. Server trả lỗi: $error';
     } finally {
+      await sessionCubit.clear();
       if (mounted) {
         setState(() => _isLoggingOut = false);
+        messenger.showSnackBar(_homeSnackBar(message));
       }
     }
   }
