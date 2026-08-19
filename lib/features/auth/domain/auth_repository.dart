@@ -171,7 +171,7 @@ class AuthRepository {
           deviceSignature: proof.deviceSignature,
         );
         if (result.isEnabled) {
-          await _saveSmartOtpBinding(result);
+          await _saveSmartOtpBinding(userId: userId, state: result);
         }
         return result;
       },
@@ -181,10 +181,10 @@ class AuthRepository {
   Future<SmartOtpCodeChallenge> revealLoginSmartOtpCode({
     required String userId,
   }) async {
-    final binding = await _readSmartOtpBinding();
+    final binding = await _readSmartOtpBinding(userId: userId);
     if (binding == null) {
       throw const AppException(
-        'Thiết bị này chưa thiết lập Smart OTP. Vui lòng đăng nhập bằng thiết bị đã đăng ký Smart OTP.',
+        'Thiết bị này chưa thiết lập Smart OTP cho tài khoản này. Vui lòng đăng nhập bằng thiết bị đã đăng ký Smart OTP.',
       );
     }
 
@@ -314,23 +314,32 @@ class AuthRepository {
     );
   }
 
-  Future<void> _saveSmartOtpBinding(SmartOtpDeviceStateResponse state) {
+  Future<void> _saveSmartOtpBinding({
+    required String userId,
+    required SmartOtpDeviceStateResponse state,
+  }) {
     return _secureStorage.write(
       key: _smartOtpBindingKey,
       value: jsonEncode({
+        'userId': userId,
         'deviceId': state.deviceId,
         'deviceKeyId': state.deviceKeyId,
       }),
     );
   }
 
-  Future<_SmartOtpBinding?> _readSmartOtpBinding() async {
+  Future<_SmartOtpBinding?> _readSmartOtpBinding({String? userId}) async {
     final raw = await _secureStorage.read(key: _smartOtpBindingKey);
     if (raw == null || raw.isEmpty) {
       return null;
     }
     final map = jsonDecode(raw) as Map<String, dynamic>;
+    final bindingUserId = map['userId'] as String?;
+    if (userId != null && bindingUserId != userId) {
+      return null;
+    }
     return _SmartOtpBinding(
+      userId: bindingUserId,
       deviceId: map['deviceId'] as String,
       deviceKeyId: map['deviceKeyId'] as String,
     );
@@ -382,8 +391,13 @@ class AuthRepository {
 }
 
 class _SmartOtpBinding {
-  const _SmartOtpBinding({required this.deviceId, required this.deviceKeyId});
+  const _SmartOtpBinding({
+    required this.userId,
+    required this.deviceId,
+    required this.deviceKeyId,
+  });
 
+  final String? userId;
   final String deviceId;
   final String deviceKeyId;
 }
