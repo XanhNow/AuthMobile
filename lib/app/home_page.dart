@@ -123,7 +123,7 @@ class _HomePageState extends State<HomePage> {
       }
       _smartOtpCodeController.clear();
       final now = DateTime.now().toUtc();
-      final localExpiresAt = now.add(const Duration(seconds: 60));
+      final localExpiresAt = now.add(const Duration(seconds: 30));
       final providerExpiresAt = challenge.reveal.expiresAtUtc.toUtc();
       setState(() {
         _smartOtpChallenge = challenge;
