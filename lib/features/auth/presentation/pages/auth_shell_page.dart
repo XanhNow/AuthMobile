@@ -96,6 +96,7 @@ class _RegisterViewState extends State<_RegisterView> {
   final _password = TextEditingController();
   final _confirmPassword = TextEditingController();
   final _displayName = TextEditingController(text: 'XanhNow Mobile User');
+  final _registrationSmartOtpCode = TextEditingController();
   bool _showPassword = false;
   bool _showConfirmPassword = false;
   bool _showSmartOtpEnrollment = false;
@@ -111,6 +112,7 @@ class _RegisterViewState extends State<_RegisterView> {
     _password.addListener(_refreshRegistrationForm);
     _confirmPassword.addListener(_refreshRegistrationForm);
     _displayName.addListener(_refreshRegistrationForm);
+    _registrationSmartOtpCode.addListener(_refreshRegistrationForm);
   }
 
   void _refreshRegistrationForm() {
@@ -157,10 +159,12 @@ class _RegisterViewState extends State<_RegisterView> {
     _password.removeListener(_refreshRegistrationForm);
     _confirmPassword.removeListener(_refreshRegistrationForm);
     _displayName.removeListener(_refreshRegistrationForm);
+    _registrationSmartOtpCode.removeListener(_refreshRegistrationForm);
     _phone.dispose();
     _password.dispose();
     _confirmPassword.dispose();
     _displayName.dispose();
+    _registrationSmartOtpCode.dispose();
     super.dispose();
   }
 
@@ -189,7 +193,9 @@ class _RegisterViewState extends State<_RegisterView> {
         final busy =
             state.step == RegistrationStep.submittingPassword ||
             state.step == RegistrationStep.creatingPasskey ||
-            state.step == RegistrationStep.enrollingSmartOtp;
+            state.step == RegistrationStep.enrollingSmartOtp ||
+            state.step == RegistrationStep.revealingSmartOtp ||
+            state.step == RegistrationStep.verifyingSmartOtp;
         final showPasswordActions =
             state.step == RegistrationStep.idle ||
             state.step == RegistrationStep.submittingPassword ||
@@ -202,6 +208,16 @@ class _RegisterViewState extends State<_RegisterView> {
             (state.step == RegistrationStep.failure && state.userId != null);
         final showSmartOtpOptions = state.step == RegistrationStep.completed;
         if (_showSmartOtpEnrollment) {
+          final smartOtpVerification =
+              state.step == RegistrationStep.smartOtpVerificationRequired ||
+              state.step == RegistrationStep.revealingSmartOtp ||
+              state.step == RegistrationStep.verifyingSmartOtp;
+          final registrationChallenge = state.smartOtpChallenge;
+          final registrationOtp = registrationChallenge?.reveal.otpCode;
+          final canVerifyRegistrationOtp =
+              registrationChallenge != null &&
+              _registrationSmartOtpCode.text.trim().isNotEmpty &&
+              !busy;
           return _PagePadding(
             child: ListView(
               children: [
@@ -244,27 +260,83 @@ class _RegisterViewState extends State<_RegisterView> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: busy
-                      ? null
-                      : () => context.read<RegistrationBloc>().add(
-                          const RegistrationSmartOtpEnrollmentStarted(),
-                        ),
-                  icon: const Icon(Icons.shield_outlined),
-                  label: Text(
-                    busy
-                        ? widget.text.enrollingSmartOtp
-                        : widget.text.startSmartOtpSetup,
+                if (!smartOtpVerification) ...[
+                  FilledButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () => context.read<RegistrationBloc>().add(
+                            const RegistrationSmartOtpEnrollmentStarted(),
+                          ),
+                    icon: const Icon(Icons.shield_outlined),
+                    label: Text(
+                      busy
+                          ? widget.text.enrollingSmartOtp
+                          : widget.text.startSmartOtpSetup,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => context.read<RegistrationBloc>().add(
-                    const RegistrationSmartOtpSkipped(),
+                ] else ...[
+                  Text(
+                    widget.text.registrationSmartOtpGateDescription,
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  icon: const Icon(Icons.arrow_forward),
-                  label: Text(widget.text.skipToHome),
-                ),
+                  if (registrationOtp != null &&
+                      registrationOtp.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      registrationOtp,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _registrationSmartOtpCode,
+                      keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.done,
+                      decoration: InputDecoration(
+                        labelText: widget.text.smartOtpCode,
+                        helperText: widget.text.smartOtpCodeHint,
+                        prefixIcon: const Icon(Icons.password_outlined),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () {
+                            _registrationSmartOtpCode.clear();
+                            context.read<RegistrationBloc>().add(
+                              const RegistrationSmartOtpCodeRequested(),
+                            );
+                          },
+                    icon: const Icon(Icons.password_outlined),
+                    label: Text(
+                      state.step == RegistrationStep.revealingSmartOtp
+                          ? widget.text.gettingSmartOtpCode
+                          : widget.text.getSmartOtpCode,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.tonalIcon(
+                    onPressed: canVerifyRegistrationOtp
+                        ? () => context.read<RegistrationBloc>().add(
+                            RegistrationSmartOtpCodeSubmitted(
+                              otp: _registrationSmartOtpCode.text.trim(),
+                            ),
+                          )
+                        : null,
+                    icon: const Icon(Icons.verified_user_outlined),
+                    label: Text(
+                      state.step == RegistrationStep.verifyingSmartOtp
+                          ? widget.text.verifyingSmartOtpCode
+                          : widget.text.verifySmartOtpCode,
+                    ),
+                  ),
+                ],
+                if (state.message != null && state.message!.isNotEmpty)
+                  _ErrorPanel(message: state.message!),
               ],
             ),
           );
@@ -1153,6 +1225,9 @@ class _AuthText {
   String get loginSmartOtpDescription => _vi
       ? 'Tài khoản này đã bật Smart OTP. Vui lòng lấy mã trên thiết bị đã đăng ký và xác thực để hoàn tất đăng nhập.'
       : 'This account has Smart OTP enabled. Get a code from the enrolled device and verify it to finish login.';
+  String get registrationSmartOtpGateDescription => _vi
+      ? 'Smart OTP đã được thiết lập cho thiết bị này. Bạn phải lấy mã và xác thực thành công trước khi vào Home.'
+      : 'Smart OTP has been set up on this device. You must get and verify a code before entering Home.';
   String get smartOtpCode => _vi ? 'Mã Smart OTP' : 'Smart OTP code';
   String get smartOtpCodeHint => _vi
       ? 'Mã có hiệu lực tối đa 60 giây.'

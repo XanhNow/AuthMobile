@@ -111,11 +111,6 @@ class AuthRepository {
       password: password,
       deviceContext: await _deviceContext.current(),
     );
-    final tokens = result.tokens;
-    if (result.isCompleted && tokens != null) {
-      await _tokenStore.save(tokens);
-      await _saveIdentityIfPresent(result.identity);
-    }
     return result;
   }
 
@@ -137,11 +132,6 @@ class AuthRepository {
       credential: credential,
       deviceContext: device,
     );
-    final tokens = result.tokens;
-    if (result.state == 'Completed' && tokens != null) {
-      await _tokenStore.save(tokens);
-      await _saveIdentityIfPresent(result.identity);
-    }
     return result;
   }
 
@@ -149,35 +139,43 @@ class AuthRepository {
 
   Future<SmartOtpDeviceStateResponse> enrollSmartOtpDevice({
     required String userId,
+    required TokenPair authorizationTokens,
   }) async {
-    final device = await _deviceContext.current();
-    final keyMaterial = await _smartOtpCrypto.prepareDeviceKey();
-    final begin = await _api.beginSmartOtpEnrollment(
-      deviceName: device.deviceName,
-      platform: _toSmartOtpPlatform(device.platform),
-      appInstanceIdHash: keyMaterial.appInstanceIdHash,
-      keyAlgorithm: keyMaterial.keyAlgorithm,
-      candidatePublicKeySpki: keyMaterial.candidatePublicKeySpki,
-      candidatePublicKeyThumbprint: keyMaterial.candidatePublicKeyThumbprint,
+    return _api.withTemporaryAccessToken(
+      authorizationTokens.accessToken,
+      () async {
+        final device = await _deviceContext.current();
+        final keyMaterial = await _smartOtpCrypto.prepareDeviceKey();
+        final begin = await _api.beginSmartOtpEnrollment(
+          deviceName: device.deviceName,
+          platform: _toSmartOtpPlatform(device.platform),
+          appInstanceIdHash: keyMaterial.appInstanceIdHash,
+          keyAlgorithm: keyMaterial.keyAlgorithm,
+          candidatePublicKeySpki: keyMaterial.candidatePublicKeySpki,
+          candidatePublicKeyThumbprint:
+              keyMaterial.candidatePublicKeyThumbprint,
+        );
+        final proof = await _smartOtpCrypto.signBinding(
+          userId: userId,
+          enrollmentId: begin.enrollmentId,
+          serverChallenge: begin.serverChallenge,
+          candidatePublicKeyThumbprint:
+              keyMaterial.candidatePublicKeyThumbprint,
+          appInstanceIdHash: keyMaterial.appInstanceIdHash,
+          createdAtUtc: begin.createdAtUtc,
+          expiresAtUtc: begin.expiresAtUtc,
+        );
+        final result = await _api.confirmSmartOtpEnrollment(
+          enrollmentId: begin.enrollmentId,
+          clientNonce: proof.clientNonce,
+          deviceSignature: proof.deviceSignature,
+        );
+        if (result.isEnabled) {
+          await _saveSmartOtpBinding(result);
+        }
+        return result;
+      },
     );
-    final proof = await _smartOtpCrypto.signBinding(
-      userId: userId,
-      enrollmentId: begin.enrollmentId,
-      serverChallenge: begin.serverChallenge,
-      candidatePublicKeyThumbprint: keyMaterial.candidatePublicKeyThumbprint,
-      appInstanceIdHash: keyMaterial.appInstanceIdHash,
-      createdAtUtc: begin.createdAtUtc,
-      expiresAtUtc: begin.expiresAtUtc,
-    );
-    final result = await _api.confirmSmartOtpEnrollment(
-      enrollmentId: begin.enrollmentId,
-      clientNonce: proof.clientNonce,
-      deviceSignature: proof.deviceSignature,
-    );
-    if (result.isEnabled) {
-      await _saveSmartOtpBinding(result);
-    }
-    return result;
   }
 
   Future<SmartOtpCodeChallenge> revealLoginSmartOtpCode({
@@ -248,11 +246,6 @@ class AuthRepository {
       otp: otp,
       deviceContext: await _deviceContext.current(),
     );
-    final tokens = result.tokens;
-    if (result.isCompleted && tokens != null) {
-      await _tokenStore.save(tokens);
-      await _saveIdentityIfPresent(result.identity);
-    }
     return result;
   }
 
@@ -374,12 +367,6 @@ class AuthRepository {
     await _tokenStore.clear();
     await _identityStore.clear();
     return result;
-  }
-
-  Future<void> _saveIdentityIfPresent(AuthIdentity? identity) async {
-    if (identity != null) {
-      await _identityStore.save(identity);
-    }
   }
 }
 

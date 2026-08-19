@@ -12,6 +12,9 @@ enum RegistrationStep {
   creatingPasskey,
   completed,
   enrollingSmartOtp,
+  smartOtpVerificationRequired,
+  revealingSmartOtp,
+  verifyingSmartOtp,
   failure,
 }
 
@@ -23,6 +26,7 @@ class RegistrationState extends Equatable {
     this.displayName,
     this.tokens,
     this.identity,
+    this.smartOtpChallenge,
     this.message,
   });
 
@@ -34,6 +38,7 @@ class RegistrationState extends Equatable {
   final String? displayName;
   final TokenPair? tokens;
   final AuthIdentity? identity;
+  final SmartOtpCodeChallenge? smartOtpChallenge;
   final String? message;
 
   RegistrationState copyWith({
@@ -43,6 +48,8 @@ class RegistrationState extends Equatable {
     String? displayName,
     TokenPair? tokens,
     AuthIdentity? identity,
+    SmartOtpCodeChallenge? smartOtpChallenge,
+    bool clearSmartOtpChallenge = false,
     String? message,
   }) {
     return RegistrationState(
@@ -52,6 +59,9 @@ class RegistrationState extends Equatable {
       displayName: displayName ?? this.displayName,
       tokens: tokens ?? this.tokens,
       identity: identity ?? this.identity,
+      smartOtpChallenge: clearSmartOtpChallenge
+          ? null
+          : smartOtpChallenge ?? this.smartOtpChallenge,
       message: message,
     );
   }
@@ -64,6 +74,7 @@ class RegistrationState extends Equatable {
     displayName,
     tokens,
     identity,
+    smartOtpChallenge,
     message,
   ];
 }
@@ -102,6 +113,19 @@ class RegistrationSmartOtpEnrollmentStarted extends RegistrationEvent {
   const RegistrationSmartOtpEnrollmentStarted();
 }
 
+class RegistrationSmartOtpCodeRequested extends RegistrationEvent {
+  const RegistrationSmartOtpCodeRequested();
+}
+
+class RegistrationSmartOtpCodeSubmitted extends RegistrationEvent {
+  const RegistrationSmartOtpCodeSubmitted({required this.otp});
+
+  final String otp;
+
+  @override
+  List<Object?> get props => [otp];
+}
+
 class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
   RegistrationBloc({
     required AuthRepository repository,
@@ -112,6 +136,8 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
     on<RegistrationPasswordSubmitted>(_onPasswordSubmitted);
     on<RegistrationPasskeyStarted>(_onPasskeyStarted);
     on<RegistrationSmartOtpEnrollmentStarted>(_onSmartOtpEnrollmentStarted);
+    on<RegistrationSmartOtpCodeRequested>(_onSmartOtpCodeRequested);
+    on<RegistrationSmartOtpCodeSubmitted>(_onSmartOtpCodeSubmitted);
     on<RegistrationSmartOtpSkipped>(_onSmartOtpSkipped);
   }
 
@@ -246,9 +272,19 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
 
     emit(state.copyWith(step: RegistrationStep.enrollingSmartOtp));
     try {
-      final result = await _repository.enrollSmartOtpDevice(userId: userId);
+      final result = await _repository.enrollSmartOtpDevice(
+        userId: userId,
+        authorizationTokens: tokens,
+      );
       if (result.isEnabled) {
-        await _sessionCubit.authenticate(tokens, identity: state.identity);
+        emit(
+          state.copyWith(
+            step: RegistrationStep.smartOtpVerificationRequired,
+            message:
+                'Smart OTP đã được thiết lập. Vui lòng lấy mã và xác thực để hoàn tất đăng nhập.',
+            clearSmartOtpChallenge: true,
+          ),
+        );
         return;
       }
 
@@ -262,6 +298,101 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
       emit(
         state.copyWith(
           step: RegistrationStep.completed,
+          message: error.toString(),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onSmartOtpCodeRequested(
+    RegistrationSmartOtpCodeRequested event,
+    Emitter<RegistrationState> emit,
+  ) async {
+    final userId = state.userId;
+    if (userId == null || userId.isEmpty) {
+      emit(
+        state.copyWith(
+          step: RegistrationStep.smartOtpVerificationRequired,
+          message: 'Missing user for Smart OTP verification.',
+          clearSmartOtpChallenge: true,
+        ),
+      );
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        step: RegistrationStep.revealingSmartOtp,
+        message: null,
+        clearSmartOtpChallenge: true,
+      ),
+    );
+    try {
+      final challenge = await _repository.revealLoginSmartOtpCode(
+        userId: userId,
+      );
+      emit(
+        state.copyWith(
+          step: RegistrationStep.smartOtpVerificationRequired,
+          smartOtpChallenge: challenge,
+          message: 'Mã Smart OTP đã được tạo. Nhập mã để hoàn tất đăng nhập.',
+        ),
+      );
+    } catch (error) {
+      emit(
+        state.copyWith(
+          step: RegistrationStep.smartOtpVerificationRequired,
+          message: error.toString(),
+          clearSmartOtpChallenge: true,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onSmartOtpCodeSubmitted(
+    RegistrationSmartOtpCodeSubmitted event,
+    Emitter<RegistrationState> emit,
+  ) async {
+    final userId = state.userId;
+    final challenge = state.smartOtpChallenge;
+    if (userId == null || userId.isEmpty || challenge == null) {
+      emit(
+        state.copyWith(
+          step: RegistrationStep.smartOtpVerificationRequired,
+          message: 'Vui lòng lấy mã Smart OTP trước.',
+        ),
+      );
+      return;
+    }
+
+    emit(
+      state.copyWith(step: RegistrationStep.verifyingSmartOtp, message: null),
+    );
+    try {
+      final result = await _repository.verifyLoginSmartOtpCode(
+        userId: userId,
+        challenge: challenge.challenge,
+        otp: event.otp,
+      );
+      final tokens = result.tokens;
+      if (result.isCompleted && tokens != null) {
+        await _sessionCubit.authenticate(
+          tokens,
+          identity: result.identity ?? state.identity,
+        );
+        return;
+      }
+
+      emit(
+        state.copyWith(
+          step: RegistrationStep.smartOtpVerificationRequired,
+          message: 'Smart OTP chưa hoàn tất đăng nhập.',
+        ),
+      );
+    } catch (error) {
+      emit(
+        state.copyWith(
+          step: RegistrationStep.smartOtpVerificationRequired,
           message: error.toString(),
         ),
       );

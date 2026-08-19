@@ -25,6 +25,20 @@ class ApiClient {
   final SecureTokenStore _tokenStore;
   final http.Client _http;
   final Uuid _uuid;
+  String? _temporaryAccessToken;
+
+  Future<T> withTemporaryAccessToken<T>(
+    String accessToken,
+    Future<T> Function() action,
+  ) async {
+    final previous = _temporaryAccessToken;
+    _temporaryAccessToken = accessToken;
+    try {
+      return await action();
+    } finally {
+      _temporaryAccessToken = previous;
+    }
+  }
 
   Future<ApiEnvelope<T>> get<T>(
     String path,
@@ -105,9 +119,14 @@ class ApiClient {
       headers['Idempotency-Key'] = idempotencyKey;
     }
     if (authenticated) {
-      final tokens = await _tokenStore.read();
-      if (tokens?.accessToken case final accessToken?) {
+      final accessToken = _temporaryAccessToken;
+      if (accessToken != null && accessToken.isNotEmpty) {
         headers['Authorization'] = 'Bearer $accessToken';
+      } else {
+        final tokens = await _tokenStore.read();
+        if (tokens?.accessToken case final storedAccessToken?) {
+          headers['Authorization'] = 'Bearer $storedAccessToken';
+        }
       }
     }
     return headers;
