@@ -196,7 +196,7 @@ class AuthRepository {
       deviceId: binding.deviceId,
       externalTransactionId: externalTransactionId,
       transactionDigest: transactionDigest,
-      expiresAtUtc: now.add(const Duration(seconds: 60)),
+      expiresAtUtc: now.add(const Duration(seconds: 30)),
     );
     final revealRequestId = _uuid.v4();
     final issuedAt = DateTime.now().toUtc();
@@ -266,7 +266,7 @@ class AuthRepository {
       purpose: purpose,
       externalTransactionId: externalTransactionId,
       transactionDigest: transactionDigest,
-      expiresAtUtc: now.add(const Duration(minutes: 5)),
+      expiresAtUtc: now.add(const Duration(seconds: 30)),
     );
     final revealRequestId = _uuid.v4();
     final issuedAt = DateTime.now().toUtc();

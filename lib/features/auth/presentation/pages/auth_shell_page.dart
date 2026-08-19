@@ -1230,8 +1230,8 @@ class _AuthText {
       : 'Smart OTP has been set up on this device. You must get and verify a code before entering Home.';
   String get smartOtpCode => _vi ? 'Mã Smart OTP' : 'Smart OTP code';
   String get smartOtpCodeHint => _vi
-      ? 'Mã có hiệu lực tối đa 60 giây.'
-      : 'The code is valid for up to 60 seconds.';
+      ? 'Mã có hiệu lực tối đa 30 giây.'
+      : 'The code is valid for up to 30 seconds.';
   String get getSmartOtpCode => _vi ? 'Lấy mã Smart OTP' : 'Get Smart OTP code';
   String get gettingSmartOtpCode =>
       _vi ? 'Đang lấy mã Smart OTP...' : 'Getting Smart OTP code...';
