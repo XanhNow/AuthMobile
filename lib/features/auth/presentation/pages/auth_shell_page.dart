@@ -281,6 +281,16 @@ class _RegisterViewState extends State<_RegisterView> {
                           : widget.text.startSmartOtpSetup,
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () => context.read<RegistrationBloc>().add(
+                            const RegistrationSmartOtpCancelled(),
+                          ),
+                    icon: const Icon(Icons.close_outlined),
+                    label: Text(widget.text.cancelSmartOtpVerification),
+                  ),
                 ] else ...[
                   Text(
                     widget.text.registrationSmartOtpGateDescription,
@@ -340,6 +350,16 @@ class _RegisterViewState extends State<_RegisterView> {
                           ? widget.text.verifyingSmartOtpCode
                           : widget.text.verifySmartOtpCode,
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: busy
+                        ? null
+                        : () => context.read<RegistrationBloc>().add(
+                            const RegistrationSmartOtpCancelled(),
+                          ),
+                    icon: const Icon(Icons.close_outlined),
+                    label: Text(widget.text.cancelSmartOtpVerification),
                   ),
                 ],
                 if (state.message != null && state.message!.isNotEmpty)
@@ -1246,6 +1266,8 @@ class _AuthText {
       _vi ? 'Xác thực mã Smart OTP' : 'Verify Smart OTP code';
   String get verifyingSmartOtpCode =>
       _vi ? 'Đang xác thực Smart OTP...' : 'Verifying Smart OTP...';
+  String get cancelSmartOtpVerification =>
+      _vi ? 'Hủy xác thực Smart' : 'Cancel Smart verification';
   String get currentSession => _vi ? 'Phiên hiện tại' : 'Current session';
   String get session => _vi ? 'Phiên' : 'Session';
   String get sessionId => _vi ? 'Mã phiên' : 'Session ID';
