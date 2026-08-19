@@ -114,6 +114,10 @@ class LoginSmartOtpCodeSubmitted extends LoginEvent {
   List<Object?> get props => [otp];
 }
 
+class LoginCancelled extends LoginEvent {
+  const LoginCancelled();
+}
+
 class LoginBloc extends Bloc<LoginEvent, LoginState> {
   LoginBloc({
     required AuthRepository repository,
@@ -126,10 +130,15 @@ class LoginBloc extends Bloc<LoginEvent, LoginState> {
     on<RequiredRegistrationPasskeySubmitted>(_onRequiredRegistrationPasskey);
     on<LoginSmartOtpCodeRequested>(_onLoginSmartOtpCodeRequested);
     on<LoginSmartOtpCodeSubmitted>(_onLoginSmartOtpCodeSubmitted);
+    on<LoginCancelled>(_onLoginCancelled);
   }
 
   final AuthRepository _repository;
   final AuthSessionCubit _sessionCubit;
+
+  void _onLoginCancelled(LoginCancelled event, Emitter<LoginState> emit) {
+    emit(const LoginState.initial());
+  }
 
   Future<void> _onPasswordLogin(
     PasswordLoginSubmitted event,

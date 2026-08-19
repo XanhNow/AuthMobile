@@ -118,10 +118,17 @@ class AuthRepository {
     String? loginIdentifier,
   }) async {
     final device = await _deviceContext.current();
-    final normalizedIdentifier =
+    final storedRegisteredPhone = await _secureStorage.read(
+      key: _registeredPhoneNumberKey,
+    );
+    final effectiveIdentifier =
         loginIdentifier == null || loginIdentifier.trim().isEmpty
+        ? storedRegisteredPhone
+        : loginIdentifier;
+    final normalizedIdentifier =
+        effectiveIdentifier == null || effectiveIdentifier.trim().isEmpty
         ? null
-        : PhoneNumberNormalizer.normalizeVietnamesePhone(loginIdentifier);
+        : PhoneNumberNormalizer.normalizeVietnamesePhone(effectiveIdentifier);
     final begin = await _api.beginPasskeyLogin(
       loginIdentifier: normalizedIdentifier,
       deviceContext: device,

@@ -776,6 +776,17 @@ class _LoginViewState extends State<_LoginView> {
                         : widget.text.verifySmartOtpCode,
                   ),
                 ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () {
+                          _smartOtpCode.clear();
+                          context.read<LoginBloc>().add(const LoginCancelled());
+                        },
+                  icon: const Icon(Icons.close_outlined),
+                  label: Text(widget.text.cancelLogin),
+                ),
                 const SizedBox(height: 20),
                 if (state.message != null && state.message!.isNotEmpty)
                   _ErrorPanel(message: state.message!),
@@ -1281,6 +1292,7 @@ class _AuthText {
       _vi ? 'Đang xác thực Smart OTP...' : 'Verifying Smart OTP...';
   String get cancelSmartOtpVerification =>
       _vi ? 'Hủy xác thực Smart' : 'Cancel Smart verification';
+  String get cancelLogin => _vi ? 'Hủy đăng nhập' : 'Cancel login';
   String get currentSession => _vi ? 'Phiên hiện tại' : 'Current session';
   String get session => _vi ? 'Phiên' : 'Session';
   String get sessionId => _vi ? 'Mã phiên' : 'Session ID';
