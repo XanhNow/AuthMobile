@@ -6,6 +6,13 @@ class SecurityAuthApi {
 
   final ApiClient _client;
 
+  Future<T> withTemporaryAccessToken<T>(
+    String accessToken,
+    Future<T> Function() action,
+  ) {
+    return _client.withTemporaryAccessToken(accessToken, action);
+  }
+
   Future<RegisterResponse> register({
     required String phoneNumber,
     required String password,
