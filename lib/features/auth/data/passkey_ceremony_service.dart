@@ -62,9 +62,8 @@ class PasskeyCeremonyService {
     final publicKey = Map<String, dynamic>.from(
       nested is JsonMap ? nested : options,
     );
-    if (publicKey['allowCredentials'] == null) {
-      publicKey['allowCredentials'] = <dynamic>[];
-    }
+    _normalizeCredentialList(publicKey, 'allowCredentials');
+    _normalizeCredentialList(publicKey, 'excludeCredentials');
     final authenticatorSelection = publicKey['authenticatorSelection'];
     if (authenticatorSelection is JsonMap &&
         authenticatorSelection['authenticatorAttachment'] == null) {
@@ -73,6 +72,29 @@ class PasskeyCeremonyService {
       )..remove('authenticatorAttachment');
     }
     return publicKey;
+  }
+
+  void _normalizeCredentialList(JsonMap publicKey, String key) {
+    final raw = publicKey[key];
+    if (raw == null) {
+      publicKey[key] = <dynamic>[];
+      return;
+    }
+    if (raw is! List) {
+      publicKey.remove(key);
+      return;
+    }
+    publicKey[key] = raw
+        .whereType<JsonMap>()
+        .map((credential) {
+          final normalized = Map<String, dynamic>.from(credential);
+          normalized['transports'] = switch (normalized['transports']) {
+            final List transports => transports,
+            _ => <dynamic>[],
+          };
+          return normalized;
+        })
+        .toList(growable: false);
   }
 
   AppException _mapPasskeyError(Object error) {
