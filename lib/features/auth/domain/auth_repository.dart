@@ -125,10 +125,14 @@ class AuthRepository {
         loginIdentifier == null || loginIdentifier.trim().isEmpty
         ? storedRegisteredPhone
         : loginIdentifier;
-    final normalizedIdentifier =
-        effectiveIdentifier == null || effectiveIdentifier.trim().isEmpty
-        ? null
-        : PhoneNumberNormalizer.normalizeVietnamesePhone(effectiveIdentifier);
+    if (effectiveIdentifier == null || effectiveIdentifier.trim().isEmpty) {
+      throw const AppException(
+        'Vui lòng nhập số điện thoại trước khi đăng nhập bằng passkey để app chọn đúng tài khoản.',
+      );
+    }
+    final normalizedIdentifier = PhoneNumberNormalizer.normalizeVietnamesePhone(
+      effectiveIdentifier,
+    );
     final begin = await _api.beginPasskeyLogin(
       loginIdentifier: normalizedIdentifier,
       deviceContext: device,
