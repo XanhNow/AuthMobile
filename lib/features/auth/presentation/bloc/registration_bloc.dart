@@ -22,6 +22,7 @@ class RegistrationState extends Equatable {
     this.userId,
     this.displayName,
     this.tokens,
+    this.identity,
     this.message,
   });
 
@@ -32,6 +33,7 @@ class RegistrationState extends Equatable {
   final String? userId;
   final String? displayName;
   final TokenPair? tokens;
+  final AuthIdentity? identity;
   final String? message;
 
   RegistrationState copyWith({
@@ -40,6 +42,7 @@ class RegistrationState extends Equatable {
     String? userId,
     String? displayName,
     TokenPair? tokens,
+    AuthIdentity? identity,
     String? message,
   }) {
     return RegistrationState(
@@ -48,6 +51,7 @@ class RegistrationState extends Equatable {
       userId: userId ?? this.userId,
       displayName: displayName ?? this.displayName,
       tokens: tokens ?? this.tokens,
+      identity: identity ?? this.identity,
       message: message,
     );
   }
@@ -59,6 +63,7 @@ class RegistrationState extends Equatable {
     userId,
     displayName,
     tokens,
+    identity,
     message,
   ];
 }
@@ -137,6 +142,7 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
         state.copyWith(
           step: RegistrationStep.pendingPasskey,
           userId: result.userId,
+          identity: result.identity,
           message: 'Password accepted. Passkey registration is required.',
         ),
       );
@@ -175,17 +181,20 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
         displayName: displayName,
       );
       TokenPair? tokens;
+      AuthIdentity? identity = state.identity;
       if (phoneNumber != null && password != null) {
         final login = await _repository.loginWithPassword(
           phoneNumber: phoneNumber,
           password: password,
         );
         tokens = login.tokens;
+        identity = login.identity ?? identity;
       }
       emit(
         state.copyWith(
           step: RegistrationStep.completed,
           tokens: tokens,
+          identity: identity,
           message: tokens == null
               ? 'Registration ${result.registrationStatus}. Please log in.'
               : 'Registration ${result.registrationStatus}.',
@@ -216,7 +225,7 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
       return;
     }
 
-    await _sessionCubit.authenticate(tokens);
+    await _sessionCubit.authenticate(tokens, identity: state.identity);
   }
 
   Future<void> _onSmartOtpEnrollmentStarted(
@@ -239,7 +248,7 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
     try {
       final result = await _repository.enrollSmartOtpDevice(userId: userId);
       if (result.isEnabled) {
-        await _sessionCubit.authenticate(tokens);
+        await _sessionCubit.authenticate(tokens, identity: state.identity);
         return;
       }
 
