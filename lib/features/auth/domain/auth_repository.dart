@@ -360,13 +360,24 @@ class AuthRepository {
   Future<List<SessionSummary>> listSessions() => _api.listSessions();
 
   Future<LogoutAllSessionsResponse> logoutAll() async {
-    final result = await _api.logoutAllSessions(
-      reasonCode: 'mobile_logout_all',
-      includeCurrentSession: true,
-    );
-    await _tokenStore.clear();
-    await _identityStore.clear();
-    return result;
+    try {
+      return await _api.logoutAllSessions(
+        reasonCode: 'mobile_logout_all',
+        includeCurrentSession: true,
+      );
+    } on AppException catch (error) {
+      if (error.statusCode == 401) {
+        return LogoutAllSessionsResponse(
+          revokedCount: 0,
+          revokedAtUtc: DateTime.now().toUtc(),
+        );
+      }
+
+      rethrow;
+    } finally {
+      await _tokenStore.clear();
+      await _identityStore.clear();
+    }
   }
 }
 
