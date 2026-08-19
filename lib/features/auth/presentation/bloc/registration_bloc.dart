@@ -109,6 +109,10 @@ class RegistrationSmartOtpSkipped extends RegistrationEvent {
   const RegistrationSmartOtpSkipped();
 }
 
+class RegistrationSmartOtpCancelled extends RegistrationEvent {
+  const RegistrationSmartOtpCancelled();
+}
+
 class RegistrationSmartOtpEnrollmentStarted extends RegistrationEvent {
   const RegistrationSmartOtpEnrollmentStarted();
 }
@@ -139,6 +143,7 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
     on<RegistrationSmartOtpCodeRequested>(_onSmartOtpCodeRequested);
     on<RegistrationSmartOtpCodeSubmitted>(_onSmartOtpCodeSubmitted);
     on<RegistrationSmartOtpSkipped>(_onSmartOtpSkipped);
+    on<RegistrationSmartOtpCancelled>(_onSmartOtpCancelled);
   }
 
   final AuthRepository _repository;
@@ -252,6 +257,28 @@ class RegistrationBloc extends Bloc<RegistrationEvent, RegistrationState> {
     }
 
     await _sessionCubit.authenticate(tokens, identity: state.identity);
+  }
+
+  Future<void> _onSmartOtpCancelled(
+    RegistrationSmartOtpCancelled event,
+    Emitter<RegistrationState> emit,
+  ) async {
+    final tokens = state.tokens;
+    if (tokens == null) {
+      emit(
+        state.copyWith(
+          step: RegistrationStep.completed,
+          message: 'Missing session. Please log in.',
+        ),
+      );
+      return;
+    }
+
+    await _sessionCubit.authenticate(
+      tokens,
+      identity: state.identity,
+      notice: 'Đăng ký thành công.',
+    );
   }
 
   Future<void> _onSmartOtpEnrollmentStarted(
