@@ -90,7 +90,7 @@ class AuthRepository {
 
     final begin = await _api.beginRegistrationPasskey(
       userId: userId,
-      displayName: displayName,
+      displayName: await _passkeyDisplayName(displayName),
       deviceContext: device,
     );
     final credential = await _passkeys.createCredential(begin.publicKeyOptions);
@@ -111,7 +111,7 @@ class AuthRepository {
       password: password,
       deviceContext: await _deviceContext.current(),
     );
-    return result;
+    return _withStoredPhoneIdentity(result);
   }
 
   Future<PasskeyLoginFinishResponse> loginWithPasskey({
@@ -139,7 +139,7 @@ class AuthRepository {
       credential: credential,
       deviceContext: device,
     );
-    return result;
+    return _withStoredPhoneIdentityForPasskey(result);
   }
 
   Future<SecurityProfile> securityProfile() => _api.securityProfile();
@@ -253,7 +253,7 @@ class AuthRepository {
       otp: otp,
       deviceContext: await _deviceContext.current(),
     );
-    return result;
+    return _withStoredPhoneIdentity(result);
   }
 
   Future<SmartOtpCodeChallenge> revealSmartOtpCode() async {
@@ -358,6 +358,85 @@ class AuthRepository {
       'ios' => 'IOS',
       _ => platform.toUpperCase(),
     };
+  }
+
+  Future<String> _passkeyDisplayName(String displayName) async {
+    final phoneNumber = await _storedRegisteredPhone();
+    final maskedPhone = _maskPhoneNumber(phoneNumber);
+    if (maskedPhone == null || maskedPhone.isEmpty) {
+      return displayName;
+    }
+    return '$displayName ($maskedPhone)';
+  }
+
+  Future<String?> _storedRegisteredPhone() async {
+    final phone = await _secureStorage.read(key: _registeredPhoneNumberKey);
+    if (phone == null || phone.trim().isEmpty) {
+      return null;
+    }
+    return PhoneNumberNormalizer.normalizeVietnamesePhone(phone);
+  }
+
+  AuthIdentity _identityWithStoredPhone(
+    String userId,
+    AuthIdentity? identity,
+    String? storedPhone,
+  ) {
+    final phoneNumber = identity?.phoneNumber ?? storedPhone;
+    return AuthIdentity(
+      userId: identity?.userId ?? userId,
+      phoneNumber: phoneNumber,
+      maskedPhoneNumber:
+          identity?.maskedPhoneNumber ?? _maskPhoneNumber(phoneNumber),
+    );
+  }
+
+  Future<PasswordLoginResponse> _withStoredPhoneIdentity(
+    PasswordLoginResponse response,
+  ) async {
+    final storedPhone = await _storedRegisteredPhone();
+    return PasswordLoginResponse(
+      state: response.state,
+      userId: response.userId,
+      tokens: response.tokens,
+      mfa: response.mfa,
+      reasonCode: response.reasonCode,
+      identity: _identityWithStoredPhone(
+        response.userId,
+        response.identity,
+        storedPhone,
+      ),
+    );
+  }
+
+  Future<PasskeyLoginFinishResponse> _withStoredPhoneIdentityForPasskey(
+    PasskeyLoginFinishResponse response,
+  ) async {
+    final storedPhone = await _storedRegisteredPhone();
+    return PasskeyLoginFinishResponse(
+      state: response.state,
+      userId: response.userId,
+      tokens: response.tokens,
+      mfa: response.mfa,
+      reasonCode: response.reasonCode,
+      identity: _identityWithStoredPhone(
+        response.userId,
+        response.identity,
+        storedPhone,
+      ),
+    );
+  }
+
+  String? _maskPhoneNumber(String? phoneNumber) {
+    if (phoneNumber == null || phoneNumber.isEmpty) {
+      return null;
+    }
+    if (phoneNumber.length <= 4) {
+      return phoneNumber;
+    }
+    return phoneNumber
+        .substring(phoneNumber.length - 4)
+        .padLeft(phoneNumber.length, '*');
   }
 
   Future<TokenPair?> refreshStoredSession() async {
